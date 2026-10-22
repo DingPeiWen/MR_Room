@@ -191,32 +191,76 @@ public class SceneController : MonoBehaviour
             return;
         }
 
+        // Each plane / box gets its own simple transparent material ("Sprites/Default" is always in the build),
+        // because the prefab's URP material and the built-in line material do not reliably show up on the headset.
+        Color baseColor = GetTrackableColor(trackable);
+
         MeshRenderer meshRenderer =
-            trackable.GetComponentInChildren<MeshRenderer>();
+            trackable.GetComponentInChildren<MeshRenderer>(true);
 
         if (meshRenderer != null)
         {
-            Color color = meshRenderer.material.color;
+            UseSpriteMaterial(meshRenderer);
 
-            color.a = fillAlpha;
+            Color fill = baseColor;
+            fill.a = fillAlpha;
 
-            meshRenderer.material.color = color;
+            meshRenderer.sharedMaterial.color = fill;
+            meshRenderer.enabled = fillAlpha > 0f;
         }
 
         LineRenderer lineRenderer =
-            trackable.GetComponentInChildren<LineRenderer>();
+            trackable.GetComponentInChildren<LineRenderer>(true);
 
         if (lineRenderer != null)
         {
-            Color startColor = lineRenderer.startColor;
-            Color endColor = lineRenderer.endColor;
+            UseSpriteMaterial(lineRenderer);
 
-            startColor.a = lineAlpha;
-            endColor.a = lineAlpha;
+            Color line = baseColor;
+            line.a = lineAlpha;
 
-            lineRenderer.startColor = startColor;
-            lineRenderer.endColor = endColor;
+            lineRenderer.startColor = line;
+            lineRenderer.endColor = line;
+            lineRenderer.enabled = lineAlpha > 0f;
         }
+    }
+
+    private static void UseSpriteMaterial(Renderer renderer)
+    {
+        Shader shader = Shader.Find("Sprites/Default");
+
+        if (shader == null)
+        {
+            return;
+        }
+
+        if (renderer.sharedMaterial == null ||
+            renderer.sharedMaterial.shader != shader)
+        {
+            renderer.sharedMaterial = new Material(shader);
+        }
+    }
+
+    private static Color GetTrackableColor(ARTrackable trackable)
+    {
+        if (trackable is ARPlane plane)
+        {
+            var c = plane.classifications;
+
+            if (c.HasFlag(PlaneClassifications.Floor)) return Color.green;
+            if (c.HasFlag(PlaneClassifications.WallFace)) return Color.white;
+            if (c.HasFlag(PlaneClassifications.Ceiling)) return Color.red;
+            if (c.HasFlag(PlaneClassifications.Table)) return Color.yellow;
+            if (c.HasFlag(PlaneClassifications.Couch) ||
+                c.HasFlag(PlaneClassifications.Seat)) return Color.blue;
+            if (c.HasFlag(PlaneClassifications.WallArt)) return new Color(1f, 0.4f, 0f);
+            if (c.HasFlag(PlaneClassifications.DoorFrame)) return Color.magenta;
+            if (c.HasFlag(PlaneClassifications.WindowFrame)) return Color.cyan;
+
+            return Color.gray;
+        }
+
+        return Color.cyan; // bounding boxes
     }
 
     // --------------------------------------------------
