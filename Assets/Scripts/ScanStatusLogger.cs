@@ -29,8 +29,36 @@ public class ScanStatusLogger : MonoBehaviour
         m_Origin = FindFirstObjectByType<XROrigin>();
     }
 
+    bool m_ReportedTracking;
+
+    // Once: what the headset really supports and what the XR Origin ended up using.
+    void ReportTracking()
+    {
+        m_ReportedTracking = true;
+
+        var subsystems = new System.Collections.Generic.List<UnityEngine.XR.XRInputSubsystem>();
+        SubsystemManager.GetSubsystems(subsystems);
+
+        var sb = new StringBuilder("TRACKING: ");
+        foreach (var s in subsystems)
+        {
+            sb.Append($"[supported={s.GetSupportedTrackingOriginModes()} current={s.GetTrackingOriginMode()} running={s.running}] ");
+        }
+        if (subsystems.Count == 0) sb.Append("no XR input subsystem ");
+
+        if (m_Origin != null)
+        {
+            var offset = m_Origin.CameraFloorOffsetObject;
+            sb.Append($"cameraOffsetY={(offset != null ? offset.transform.localPosition.y : float.NaN):F2} cameraYOffsetSetting={m_Origin.CameraYOffset:F2} ");
+            sb.Append($"trackablesParentY={(m_Origin.TrackablesParent != null ? m_Origin.TrackablesParent.position.y : float.NaN):F2}");
+        }
+        Debug.Log(sb.ToString());
+    }
+
     void Update()
     {
+        if (!m_ReportedTracking && Time.time > 4f) ReportTracking();
+
         m_Timer += Time.deltaTime;
         if (m_Timer < m_Interval) return;
         m_Timer = 0f;
